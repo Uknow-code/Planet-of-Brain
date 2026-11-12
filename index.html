@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>🌍 環境問題対策委員会：惑星ブレイン保全トラッカー</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js for Weekday Bar & City Radar Charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Noto Sans JP"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            space: {
+              950: '#040914',
+              900: '#091122',
+              850: '#0f1b33',
+              800: '#162544',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      -webkit-tap-highlight-color: transparent;
+      background-image:
+        radial-gradient(circle at 15% 15%, rgba(16, 185, 129, 0.09) 0%, transparent 45%),
+        radial-gradient(circle at 85% 85%, rgba(6, 182, 212, 0.09) 0%, transparent 45%);
+    }
+    input[type="date"]::-webkit-calendar-picker-indicator {
+      filter: invert(1) opacity(0.75);
+      cursor: pointer;
+    }
+    .tab-fade-in {
+      animation: fadeIn 0.25s ease-out forwards;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body class="bg-space-950 text-slate-100 font-sans min-h-screen flex flex-col items-center justify-start p-2.5 sm:p-6 selection:bg-emerald-500/30 selection:text-emerald-200">
+
+  <!-- Main Control Panel Container -->
+  <main class="w-full max-w-xl bg-space-900/95 backdrop-blur-xl border border-teal-500/25 rounded-3xl shadow-2xl shadow-teal-950/60 overflow-hidden relative flex flex-col my-auto">
+
+    <!-- Ambient Top Glow -->
+    <div class="absolute top-0 left-1/2 -translate-x-1/2 w-4/5 h-24 bg-emerald-500/10 blur-3xl pointer-events-none"></div>
+
+    <!-- Header -->
+    <header class="p-4 sm:p-6 pb-3 border-b border-slate-800/80 bg-gradient-to-b from-space-850/90 to-transparent relative">
+      <div class="flex items-center justify-between gap-2 mb-2">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-mono tracking-wider uppercase bg-teal-950/80 text-teal-300 border border-teal-500/30">
+            <span id="cloud-status-dot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+            <span id="cloud-status-text">CONNECTING...</span>
+          </span>
+        </div>
+
+        <!-- SYSTEM / Demo Data Drawer Toggle -->
+        <button id="toggle-system-btn" type="button" onclick="toggleSystemDrawer()" class="px-3 py-1.5 rounded-xl text-xs font-mono font-bold text-cyan-200 bg-slate-800/80 hover:bg-slate-800 border border-cyan-500/35 transition-all active:scale-95 cursor-pointer flex items-center gap-1.5 flex-shrink-0">
+          <span>⚙️</span><span>SYSTEM</span>
+        </button>
+      </div>
+
+      <h1 class="text-base sm:text-xl font-bold tracking-tight text-white leading-snug">
+        🌍 環境問題対策委員会：惑星ブレイン保全トラッカー
+      </h1>
+
+      <!-- Collapsible System & Backup Drawer -->
+      <div id="system-drawer" class="hidden mt-3 p-3.5 rounded-2xl bg-space-950/95 border border-slate-700/80 text-xs space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="font-bold text-slate-200">🛠️ システム管理 ＆ クラウド同期情報</span>
+          <button type="button" onclick="toggleSystemDrawer()" class="text-slate-400 hover:text-white px-2 py-0.5 rounded cursor-pointer">✕</button>
+        </div>
+
+        <!-- User ID Display for Cloud Sync Verification -->
+        <div class="p-2.5 rounded-xl bg-space-900 border border-slate-800 space-y-1">
+          <span class="text-[10px] font-mono text-slate-400 block">CONNECTED OBSERVER ID (FIRESTORE UID)</span>
+          <div class="flex items-center justify-between gap-2">
+            <code id="display-user-id" class="text-[11px] font-mono text-emerald-300 break-all select-all">認証待機中...</code>
+            <button type="button" onclick="copyUserId()" class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[10px] font-bold text-slate-200 flex-shrink-0 cursor-pointer">
+              コピー
+            </button>
+          </div>
+        </div>
+
+        <p class="text-slate-400 leading-relaxed">
+          記録データは自動的にクラウド（Firestore）へ保存されます。過去3週間分のサンプルデータを投入してグラフの挙動を確認することも可能です。
+        </p>
+        <div class="flex flex-wrap items-center gap-2">
+          <button type="button" onclick="seedDemoData()" class="px-3 py-2 rounded-xl font-bold text-cyan-200 bg-cyan-950/90 hover:bg-cyan-900 border border-cyan-500/40 transition-all active:scale-95 cursor-pointer">
+            ✨ デモデータを投入（3週間分）
+          </button>
+          <button id="wipe-btn" type="button" onclick="handleWipeClick()" class="px-3 py-2 rounded-xl font-medium text-rose-300 bg-rose-950/50 hover:bg-rose-950 border border-rose-500/30 transition-all active:scale-95 cursor-pointer">
+            🗑️ 全データ削除
+          </button>
+          <button id="wipe-confirm-btn" type="button" onclick="executeWipeAll()" class="hidden px-3 py-2 rounded-xl font-bold text-white bg-rose-600 hover:bg-rose-500 border border-rose-400 transition-all active:scale-95 cursor-pointer">
+            本当に削除しますか？
+          </button>
+        </div>
+      </div>
+
+      <!-- Inline Notification Banner (Replaces native alert) -->
+      <div id="toast-banner" class="hidden mt-3 px-3.5 py-2.5 rounded-xl bg-emerald-950/85 border border-emerald-400/50 text-emerald-200 text-xs font-medium flex items-center justify-between gap-2">
+        <span id="toast-message"></span>
+        <button type="button" onclick="hideToast()" class="text-emerald-400 hover:text-white font-bold cursor-pointer">✕</button>
+      </div>
+
+      <!-- 3-Tab Navigation -->
+      <nav aria-label="メインビュー切り替え" class="grid grid-cols-3 gap-1.5 mt-4 p-1 bg-space-950/90 border border-slate-800 rounded-2xl">
+        <button id="tab-daily" type="button" onclick="switchTab('daily')" class="py-2.5 px-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1 cursor-pointer">
+          <span>📋</span><span>今日の保全</span>
+        </button>
+        <button id="tab-analytics" type="button" onclick="switchTab('analytics')" class="py-2.5 px-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1 cursor-pointer">
+          <span>📊</span><span>分析</span>
+        </button>
+        <button id="tab-monthly" type="button" onclick="switchTab('monthly')" class="py-2.5 px-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1 cursor-pointer">
+          <span>🗓️</span><span>月間成果</span>
+        </button>
+      </nav>
+    </header>
+
+    <!-- =================================================================== -->
+    <!-- TAB 1: DAILY CONSERVATION VIEW (📋 今日の保全)                      -->
+    <!-- =================================================================== -->
+    <section id="panel-daily" class="p-4 sm:p-6 space-y-4 tab-fade-in">
+      <!-- Date Switcher -->
+      <div class="flex items-center justify-between gap-2 bg-space-850/75 border border-slate-800 rounded-2xl p-2.5">
+        <button type="button" onclick="shiftSelectedDate(-1)" aria-label="前日" class="p-2.5 rounded-xl bg-space-900 hover:bg-slate-800 text-slate-300 hover:text-cyan-300 border border-slate-700/70 transition-all active:scale-95 cursor-pointer">
+          ◀
+        </button>
+
+        <div class="flex flex-col items-center">
+          <div class="flex items-center gap-2">
+            <input id="daily-date-input" type="date" onchange="onDateInputChange(this.value)" class="bg-transparent text-sm sm:text-base font-mono font-bold text-white focus:outline-none cursor-pointer text-center" />
+            <span id="daily-weekday-pill" class="px-2 py-0.5 rounded-md text-xs font-bold bg-slate-800 text-cyan-300 border border-slate-700">木曜</span>
+          </div>
+          <button id="back-to-today-btn" type="button" onclick="jumpToToday()" class="hidden mt-1 text-[11px] font-bold text-emerald-400 hover:text-emerald-300 underline underline-offset-2 cursor-pointer">
+            今日へ戻る
+          </button>
+        </div>
+
+        <button type="button" onclick="shiftSelectedDate(1)" aria-label="翌日" class="p-2.5 rounded-xl bg-space-900 hover:bg-slate-800 text-slate-300 hover:text-cyan-300 border border-slate-700/70 transition-all active:scale-95 cursor-pointer">
+          ▶
+        </button>
+      </div>
+
+      <!-- Real-Time Eco-Stability Gauge & Rank Badge -->
+      <div class="bg-space-950/85 border border-slate-800 rounded-2xl p-4 shadow-inner">
+        <div class="flex items-center justify-between gap-2 mb-2">
+          <div>
+            <span class="text-[11px] font-mono uppercase tracking-wider text-slate-400 block">ECO-STABILITY INDEX</span>
+            <div class="flex items-center gap-2 mt-1">
+              <span id="eco-rank-badge" class="px-2.5 py-0.5 rounded-md text-xs font-mono font-extrabold bg-slate-800 text-slate-400 border border-slate-700">
+                STANDBY
+              </span>
+              <span id="eco-status-desc" class="text-xs font-bold text-slate-300">大気圏モニタリング待機中</span>
+            </div>
+          </div>
+          <div class="text-right font-mono">
+            <span id="eco-rate-text" class="text-3xl font-extrabold text-emerald-400">0</span>
+            <span class="text-sm font-bold text-emerald-500/80">%</span>
+          </div>
+        </div>
+
+        <!-- Gauge Bar -->
+        <div class="w-full h-3 bg-slate-800/90 rounded-full overflow-hidden p-0.5 border border-slate-700/50">
+          <div id="eco-progress-bar" class="h-full w-0 rounded-full bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-400 transition-all duration-500 ease-out shadow-[0_0_12px_rgba(52,211,153,0.55)]"></div>
+        </div>
+
+        <!-- 100% Rank S Banner -->
+        <div id="perfect-day-banner" class="hidden mt-3 pt-3 border-t border-emerald-500/25 text-center">
+          <p class="text-xs sm:text-sm font-bold text-emerald-300 bg-emerald-950/65 border border-emerald-400/40 rounded-xl py-2 px-3 shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+            🌍 惑星エコシステム完全安定：文明の氷河期を完全回避！
+          </p>
+        </div>
+      </div>
+
+      <!-- 4 City Categories & Checklist Items -->
+      <div id="cities-container" class="space-y-3.5"></div>
+
+      <!-- JSON Backup Export / Import Footer -->
+      <div class="pt-2 border-t border-slate-800/80 space-y-2.5">
+        <div class="flex items-center justify-between text-xs text-slate-400">
+          <span class="font-mono">達成項目: <strong id="daily-checked-ratio" class="text-slate-200">0 / 7</strong></span>
+          <button type="button" onclick="clearCurrentDay()" class="text-slate-400 hover:text-amber-300 underline underline-offset-2 cursor-pointer">
+            この日をクリア
+          </button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2.5">
+          <button type="button" onclick="exportJsonBackup()" class="py-2.5 px-3 rounded-xl text-xs font-bold text-cyan-200 bg-space-850 hover:bg-space-800 border border-cyan-500/30 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5">
+            <span>💾</span><span>JSONデータ保存</span>
+          </button>
+          <button type="button" onclick="toggleImportModal()" class="py-2.5 px-3 rounded-xl text-xs font-bold text-teal-200 bg-space-850 hover:bg-space-800 border border-teal-500/30 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5">
+            <span>📂</span><span>JSONデータ復元</span>
+          </button>
+        </div>
+
+        <!-- Inline JSON Import Area -->
+        <div id="import-box" class="hidden p-3.5 rounded-2xl bg-space-950 border border-teal-500/40 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-teal-300">バックアップJSONの貼り付け / ファイル選択</span>
+            <button type="button" onclick="toggleImportModal()" class="text-slate-400 hover:text-white text-xs cursor-pointer">✕</button>
+          </div>
+          <input type="file" id="json-file-input" accept=".json,application/json" onchange="handleJsonFileUpload(event)" class="block w-full text-xs text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-teal-900 file:text-teal-200 hover:file:bg-teal-800 cursor-pointer" />
+          <textarea id="json-paste-area" rows="3" placeholder='またはここに {"2026-11-12": ...} のJSONテキストを貼り付け' class="w-full p-2.5 rounded-xl bg-space-900 border border-slate-700 text-xs font-mono text-slate-200 focus:outline-none focus:border-teal-400"></textarea>
+          <button type="button" onclick="applyPastedJson()" class="w-full py-2 rounded-xl text-xs font-bold text-space-950 bg-emerald-400 hover:bg-emerald-300 transition-all active:scale-95 cursor-pointer">
+            データを復元してクラウドへ同期する
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- TAB 2: ANALYTICS VIEW (📊 分析)                                     -->
+    <!-- =================================================================== -->
+    <section id="panel-analytics" class="hidden p-4 sm:p-6 space-y-5 tab-fade-in">
+      <!-- Weekday Trends Bar Chart Card -->
+      <div class="bg-space-850/65 border border-slate-800 rounded-2xl p-4">
+        <div class="flex items-center justify-between mb-1">
+          <h2 class="text-xs sm:text-sm font-bold text-cyan-300 flex items-center gap-1.5">
+            <span>📈</span><span>曜日別エコ安定度（月〜日）</span>
+          </h2>
+          <span id="analytics-days-badge" class="text-[11px] font-mono text-slate-400">記録: 0日分</span>
+        </div>
+        <p class="text-[11px] text-slate-400 mb-3">曜日ごとの平均達成率を比較し、熱暴走しやすい曜日を特定します。</p>
+        <div class="bg-space-950/80 border border-slate-800/90 rounded-xl p-3">
+          <canvas id="weekdayBarChart" height="170"></canvas>
+        </div>
+        <div id="weekday-summary-note" class="mt-3 p-3 rounded-xl bg-space-900/90 border border-slate-800 text-xs text-slate-300 leading-relaxed">
+          データを記録すると、曜日別の傾向コメントがここに表示されます。
+        </div>
+      </div>
+
+      <!-- City Maintenance Radar Chart Card -->
+      <div class="bg-space-850/65 border border-slate-800 rounded-2xl p-4">
+        <div class="mb-2">
+          <h2 class="text-xs sm:text-sm font-bold text-emerald-300 flex items-center gap-1.5">
+            <span>🕸️</span><span>4都市バランス・レーダーチャート</span>
+          </h2>
+          <p class="text-[11px] text-slate-400 mt-0.5">Te・Ne・Ni・古い脳の保全バランスを多角的に可視化します。</p>
+        </div>
+        <div class="bg-space-950/80 border border-slate-800/90 rounded-xl p-3 flex items-center justify-center">
+          <div class="w-full max-w-[290px]">
+            <canvas id="cityRadarChart" height="240"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- TAB 3: MONTHLY ACHIEVEMENT & HEATMAP VIEW (🗓️ 月間成果)             -->
+    <!-- =================================================================== -->
+    <section id="panel-monthly" class="hidden p-4 sm:p-6 space-y-5 tab-fade-in">
+      <!-- Month Navigation -->
+      <div class="flex items-center justify-between bg-space-850/75 border border-slate-800 rounded-2xl p-2.5">
+        <button type="button" onclick="shiftViewingMonth(-1)" aria-label="前月" class="p-2.5 rounded-xl bg-space-900 hover:bg-slate-800 text-slate-300 hover:text-cyan-300 border border-slate-700/70 transition-all active:scale-95 cursor-pointer">
+          ◀
+        </button>
+        <div class="text-center">
+          <span id="monthly-header-title" class="text-base sm:text-lg font-mono font-extrabold text-white tracking-wide">2026年 11月</span>
+          <span class="block text-[10px] font-mono text-teal-400">PLANETARY ECO HEATMAP</span>
+        </div>
+        <button type="button" onclick="shiftViewingMonth(1)" aria-label="翌月" class="p-2.5 rounded-xl bg-space-900 hover:bg-slate-800 text-slate-300 hover:text-cyan-300 border border-slate-700/70 transition-all active:scale-95 cursor-pointer">
+          ▶
+        </button>
+      </div>
+
+      <!-- Heatmap Calendar -->
+      <div class="bg-space-850/65 border border-slate-800 rounded-2xl p-3.5 sm:p-4">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-bold text-slate-300">日別ヒートマップ（タップでその日へ移動）</span>
+          <div class="flex items-center gap-1 text-[10px] font-mono text-slate-400">
+            <span>0%</span>
+            <span class="w-2.5 h-2.5 rounded-sm bg-slate-800 border border-slate-700"></span>
+            <span class="w-2.5 h-2.5 rounded-sm bg-teal-900 border border-teal-700"></span>
+            <span class="w-2.5 h-2.5 rounded-sm bg-emerald-600 border border-emerald-400"></span>
+            <span class="w-2.5 h-2.5 rounded-sm bg-emerald-400 border border-emerald-200"></span>
+            <span>100%</span>
+          </div>
+        </div>
+
+        <!-- Mon - Sun Headers -->
+        <div class="grid grid-cols-7 gap-1.5 text-center text-[11px] font-bold text-slate-400 mb-1.5">
+          <div>月</div><div>火</div><div>水</div><div>木</div><div>金</div><div class="text-cyan-400">土</div><div class="text-rose-400">日</div>
+        </div>
+
+        <!-- Calendar Cells -->
+        <div id="monthly-heatmap-grid" class="grid grid-cols-7 gap-1.5"></div>
+      </div>
+
+      <!-- Monthly Summary & Rank Assessment -->
+      <div class="bg-gradient-to-br from-space-850/90 to-space-950 border border-teal-500/30 rounded-2xl p-4 sm:p-5 space-y-4 shadow-lg">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div>
+            <span class="text-[10px] font-mono uppercase tracking-wider text-teal-400 block">MONTHLY COMMITTEE REPORT</span>
+            <h3 class="text-sm sm:text-base font-bold text-white">月間環境アセスメント総評</h3>
+          </div>
+          <span id="monthly-rank-pill" class="px-3 py-1 rounded-xl text-xs font-mono font-extrabold bg-slate-800 text-slate-300 border border-slate-700">
+            未観測
+          </span>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2.5 text-center">
+          <div class="bg-space-950/85 border border-slate-800 rounded-xl p-2.5">
+            <span class="text-[10px] text-slate-400 block">月間平均安定度</span>
+            <span id="monthly-avg-score" class="text-lg sm:text-xl font-mono font-extrabold text-emerald-400 mt-0.5 block">0%</span>
+          </div>
+          <div class="bg-space-950/85 border border-slate-800 rounded-xl p-2.5">
+            <span class="text-[10px] text-slate-400 block">完全冷却日 (100%)</span>
+            <span id="monthly-perfect-days" class="text-lg sm:text-xl font-mono font-extrabold text-cyan-400 mt-0.5 block">0日</span>
+          </div>
+          <div class="bg-space-950/85 border border-slate-800 rounded-xl p-2.5">
+            <span class="text-[10px] text-slate-400 block">月間記録日数</span>
+            <span id="monthly-recorded-days" class="text-lg sm:text-xl font-mono font-extrabold text-amber-300 mt-0.5 block">0日</span>
+          </div>
+        </div>
+
+        <div class="p-3.5 rounded-xl bg-teal-950/35 border border-teal-500/25 space-y-1">
+          <div id="monthly-verdict-title" class="text-xs sm:text-sm font-bold text-emerald-300">
+            🌱 観測データ待機中
+          </div>
+          <p id="monthly-verdict-desc" class="text-xs text-slate-300 leading-relaxed">
+            日々の保全チェックを記録すると、今月の惑星気候ランクと委員会からの総評が自動生成されます。
+          </p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Firebase SDK (Modular v11.6.1) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // =========================================================================
+    // 1. FIREBASE CONFIGURATION & INITIALIZATION
+    // =========================================================================
+    const userProvidedFirebaseConfig = {
+      apiKey: "AIzaSyAHVes65EmW_byAJYCpUs4ibqGmAZGMitw",
+      authDomain: "planet-of-brain.firebaseapp.com",
+      projectId: "planet-of-brain",
+      storageBucket: "planet-of-brain.firebasestorage.app",
+      messagingSenderId: "261260560660",
+      appId: "1:261260560660:web:9709eded0b13b4f6419a01",
+      measurementId: "G-FVW497JQF3"
+    };
+
+    // Fallback to environment config if injected, otherwise use user's GitHub Pages config
+    const firebaseConfig = typeof __firebase_config !== 'undefined'
+      ? JSON.parse(__firebase_config)
+      : userProvidedFirebaseConfig;
+
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'planet-brain-tracker';
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const firestore = getFirestore(app);
+
+    let currentUser = null;
+    let unsubscribeSnapshot = null;
+
+    // =========================================================================
+    // 2. MASTER CONFIGURATION (4 CITIES & 7 ITEMS)
+    // =========================================================================
+    const WEEKDAYS_JP = ['日', '月', '火', '水', '木', '金', '土'];
+
+    const CITY_CATEGORIES = [
+      {
+        id: 'city-te',
+        shortLabel: '第1都市 (Te)',
+        title: '第1都市（Te：実行・論理）',
+        icon: '⚙️',
+        items: [
+          {
+            id: 'te_1',
+            title: '起床後3時間のデジタルデトックス（NO PC / NO スマホ）',
+            subtext: '朝のゴールデンタイムに情報洪水を遮断し、大気圏を冷却'
+          },
+          {
+            id: 'te_2',
+            title: '万年筆ジャーナリング ＆ 読書・軽いタスク',
+            subtext: '低燃費なアナログ制御で穏やかにアイドリング'
+          }
+        ]
+      },
+      {
+        id: 'city-ne',
+        shortLabel: '第2都市 (Ne)',
+        title: '第2都市（Ne：直観・跳躍）',
+        icon: '⚡',
+        items: [
+          {
+            id: 'ne_1',
+            title: 'ストレッチ 20分',
+            subtext: '思考のワープによる神経の過緊張をほぐす冷却措置'
+          },
+          {
+            id: 'ne_2',
+            title: 'ワイドスクワット 60回',
+            subtext: '下半身の筋肉負荷で意識を物理的な地上へアンカリング'
+          }
+        ]
+      },
+      {
+        id: 'city-ni',
+        shortLabel: '第3都市 (Ni)',
+        title: '第3都市（Ni：統合・中枢）',
+        icon: '🌌',
+        items: [
+          {
+            id: 'ni_1',
+            title: '省エネシフトダウン（アニメ・映画鑑賞・読書・瞑想）',
+            subtext: '自前の世界構築コストを下げ、安全な枠組みへ相乗り'
+          }
+        ]
+      },
+      {
+        id: 'city-old',
+        shortLabel: '第4都市 (古い脳)',
+        title: '第4都市（古い脳：資源基盤）',
+        icon: '🌲',
+        items: [
+          {
+            id: 'old_1',
+            title: '計画的な栄養補給（植林プロジェクト）',
+            subtext: '肉体と神経伝達物質の森林資源を保護・育成'
+          },
+          {
+            id: 'old_2',
+            title: '睡眠アセスメントの遵守',
+            subtext: '日々の気候（体調）に合わせて柔軟にエネルギーを回収'
+          }
+        ]
+      }
+    ];
+
+    const ALL_ITEM_IDS = CITY_CATEGORIES.flatMap(c => c.items.map(i => i.id));
+    const TOTAL_ITEMS = ALL_ITEM_IDS.length; // 7
+
+    // =========================================================================
+    // 3. IN-MEMORY STATE & FIRESTORE SYNC ENGINE
+    // =========================================================================
+    let db = {};
+    let activeTab = 'daily';
+    let selectedDateStr = getTodayStr();
+    let viewingYear = new Date().getFullYear();
+    let viewingMonth = new Date().getMonth();
+    let weekdayChartObj = null;
+    let cityRadarChartObj = null;
+    let wipeTimer = null;
+
+    function formatDateLocal(d) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    function parseDateLocal(str) {
+      const [y, m, d] = str.split('-').map(Number);
+      return new Date(y, m - 1, d);
+    }
+
+    function getTodayStr() {
+      return formatDateLocal(new Date());
+    }
+
+    function updateCloudBadge(status, label) {
+      const dot = document.getElementById('cloud-status-dot');
+      const text = document.getElementById('cloud-status-text');
+      text.textContent = label;
+      if (status === 'synced') {
+        dot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
+      } else if (status === 'syncing') {
+        dot.className = 'w-2 h-2 rounded-full bg-cyan-400 animate-ping';
+      } else {
+        dot.className = 'w-2 h-2 rounded-full bg-rose-500';
+      }
+    }
+
+    // Save entire tracker dictionary to Firestore user document
+    async function saveDatabaseToFirestore() {
+      if (!currentUser) {
+        showToast('⚠️ クラウド認証が完了していないため保存できません。');
+        return;
+      }
+      updateCloudBadge('syncing', 'CLOUD SYNCING...');
+      try {
+        // Strict path: /artifacts/{appId}/users/{userId}/{collectionName}/{docId}
+        const docRef = doc(firestore, 'artifacts', appId, 'users', currentUser.uid, 'tracker_data', 'records');
+        await setDoc(docRef, {
+          daysJson: JSON.stringify(db),
+          updatedAt: new Date().toISOString()
+        });
+        updateCloudBadge('synced', 'FIRESTORE CLOUD SYNCED');
+      } catch (err) {
+        console.error('Firestore save error:', err);
+        updateCloudBadge('error', 'SYNC ERROR');
+        showToast('⚠️ クラウド保存に失敗しました: ' + err.message);
+      }
+    }
+
+    // Initialize Authentication & Real-time Firestore Listener
+    async function initCloudConnection() {
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          const cred = await signInWithCustomToken(auth, __initial_auth_token);
+          currentUser = cred.user;
+        } else {
+          const cred = await signInAnonymously(auth);
+          currentUser = cred.user;
+        }
+
+        if (!currentUser) return;
+
+        document.getElementById('display-user-id').textContent = currentUser.uid;
+        updateCloudBadge('synced', 'FIRESTORE CLOUD SYNCED');
+
+        // Subscribe to real-time updates on user's tracker document
+        const docRef = doc(firestore, 'artifacts', appId, 'users', currentUser.uid, 'tracker_data', 'records');
+        if (unsubscribeSnapshot) unsubscribeSnapshot();
+
+        unsubscribeSnapshot = onSnapshot(
+          docRef,
+          (snapshot) => {
+            if (snapshot.exists()) {
+              const data = snapshot.data();
+              if (data && data.daysJson) {
+                try {
+                  db = JSON.parse(data.daysJson);
+                } catch (e) {
+                  console.error('JSON parse error from Firestore:', e);
+                  db = {};
+                }
+              } else {
+                db = {};
+              }
+            } else {
+              db = {};
+            }
+            // Re-render current active tab whenever cloud data updates
+            renderActiveView();
+          },
+          (error) => {
+            console.error('Firestore onSnapshot error:', error);
+            updateCloudBadge('error', 'CLOUD DISCONNECTED');
+            showToast('⚠️ Firestoreのリアルタイム同期エラー: ' + error.message);
+          }
+        );
+      } catch (authErr) {
+        console.error('Authentication error:', authErr);
+        updateCloudBadge('error', 'AUTH FAILED');
+        showToast('⚠️ Firebase認証エラー: コンソールで「匿名認証」が有効かご確認ください。');
+      }
+    }
+
+    function getDayStats(dateStr) {
+      const record = db[dateStr] || {};
+      const checked = ALL_ITEM_IDS.filter(id => !!record[id]).length;
+      const percent = Math.round((checked / TOTAL_ITEMS) * 100);
+      return { checked, percent };
+    }
+
+    // =========================================================================
+    // 4. UI HELPERS (TABS, TOASTS, SYSTEM DRAWER)
+    // =========================================================================
+    function showToast(msg) {
+      const banner = document.getElementById('toast-banner');
+      document.getElementById('toast-message').textContent = msg;
+      banner.classList.remove('hidden');
+      setTimeout(() => {
+        banner.classList.add('hidden');
+      }, 4500);
+    }
+
+    function hideToast() {
+      document.getElementById('toast-banner').classList.add('hidden');
+    }
+
+    function toggleSystemDrawer() {
+      document.getElementById('system-drawer').classList.toggle('hidden');
+    }
+
+    function copyUserId() {
+      const uidText = document.getElementById('display-user-id').textContent;
+      const tempInput = document.createElement('textarea');
+      tempInput.value = uidText;
+      document.body.appendChild(tempInput);
+      tempInput.select();
+      document.execCommand('copy');
+      document.body.removeChild(tempInput);
+      showToast('📋 観測者ID（UID）をクリップボードにコピーしました。');
+    }
+
+    function renderActiveView() {
+      if (activeTab === 'daily') renderDailyView();
+      if (activeTab === 'analytics') renderAnalyticsView();
+      if (activeTab === 'monthly') renderMonthlyView();
+    }
+
+    function switchTab(tabName) {
+      activeTab = tabName;
+      ['daily', 'analytics', 'monthly'].forEach(t => {
+        const panel = document.getElementById(`panel-${t}`);
+        const btn = document.getElementById(`tab-${t}`);
+        if (t === tabName) {
+          panel.classList.remove('hidden');
+          btn.className = 'py-2.5 px-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1 cursor-pointer bg-gradient-to-r from-teal-600/85 to-emerald-600/85 text-white shadow-md shadow-emerald-950/50 border border-emerald-400/40';
+        } else {
+          panel.classList.add('hidden');
+          btn.className = 'py-2.5 px-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1 cursor-pointer text-slate-400 hover:text-slate-200 hover:bg-slate-900/60';
+        }
+      });
+
+      renderActiveView();
+    }
+
+    // =========================================================================
+    // 5. TAB 1: DAILY VIEW
+    // =========================================================================
+    function shiftSelectedDate(delta) {
+      const d = parseDateLocal(selectedDateStr);
+      d.setDate(d.getDate() + delta);
+      selectedDateStr = formatDateLocal(d);
+      renderDailyView();
+    }
+
+    function onDateInputChange(val) {
+      if (!val) return;
+      selectedDateStr = val;
+      renderDailyView();
+    }
+
+    function jumpToToday() {
+      selectedDateStr = getTodayStr();
+      renderDailyView();
+    }
+
+    async function toggleItem(itemId) {
+      if (!db[selectedDateStr]) {
+        db[selectedDateStr] = {};
+      }
+      db[selectedDateStr][itemId] = !db[selectedDateStr][itemId];
+
+      // Remove empty day entry if all unchecked
+      if (!ALL_ITEM_IDS.some(id => !!db[selectedDateStr][id])) {
+        delete db[selectedDateStr];
+      }
+
+      renderDailyView();
+      await saveDatabaseToFirestore();
+    }
+
+    async function clearCurrentDay() {
+      delete db[selectedDateStr];
+      renderDailyView();
+      await saveDatabaseToFirestore();
+      showToast('選択中の日のチェック記録をクリアし、クラウドへ反映しました。');
+    }
+
+    function renderDailyView() {
+      const dateObj = parseDateLocal(selectedDateStr);
+      const todayStr = getTodayStr();
+      const dow = dateObj.getDay();
+
+      document.getElementById('daily-date-input').value = selectedDateStr;
+      const pill = document.getElementById('daily-weekday-pill');
+      pill.textContent = `${WEEKDAYS_JP[dow]}曜`;
+      pill.className = `px-2 py-0.5 rounded-md text-xs font-bold border ${
+        dow === 0 ? 'bg-rose-950/75 text-rose-300 border-rose-500/40' :
+        dow === 6 ? 'bg-cyan-950/75 text-cyan-300 border-cyan-500/40' :
+        'bg-slate-800 text-cyan-300 border-slate-700'
+      }`;
+
+      const backBtn = document.getElementById('back-to-today-btn');
+      if (selectedDateStr !== todayStr) {
+        backBtn.classList.remove('hidden');
+      } else {
+        backBtn.classList.add('hidden');
+      }
+
+      const { checked, percent } = getDayStats(selectedDateStr);
+      document.getElementById('eco-rate-text').textContent = percent;
+      document.getElementById('eco-progress-bar').style.width = `${percent}%`;
+      document.getElementById('daily-checked-ratio').textContent = `${checked} / ${TOTAL_ITEMS}`;
+
+      const rankBadge = document.getElementById('eco-rank-badge');
+      const statusDesc = document.getElementById('eco-status-desc');
+      const perfectBanner = document.getElementById('perfect-day-banner');
+
+      if (percent === 100) {
+        rankBadge.textContent = 'RANK S';
+        rankBadge.className = 'px-2.5 py-0.5 rounded-md text-xs font-mono font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-400/50 shadow-[0_0_10px_rgba(16,185,129,0.25)]';
+        statusDesc.textContent = '全都市ローリング冷却完了';
+        statusDesc.className = 'text-xs font-bold text-emerald-400';
+        perfectBanner.classList.remove('hidden');
+      } else if (percent >= 70) {
+        rankBadge.textContent = 'RANK A';
+        rankBadge.className = 'px-2.5 py-0.5 rounded-md text-xs font-mono font-extrabold bg-teal-500/20 text-teal-300 border border-teal-400/50';
+        statusDesc.textContent = '良好なエコバランス維持中';
+        statusDesc.className = 'text-xs font-bold text-teal-300';
+        perfectBanner.classList.add('hidden');
+      } else if (percent >= 40) {
+        rankBadge.textContent = 'RANK B';
+        rankBadge.className = 'px-2.5 py-0.5 rounded-md text-xs font-mono font-extrabold bg-cyan-500/20 text-cyan-300 border border-cyan-400/50';
+        statusDesc.textContent = '冷却措置進行中（さらなる休息を推奨）';
+        statusDesc.className = 'text-xs font-bold text-cyan-300';
+        perfectBanner.classList.add('hidden');
+      } else if (percent > 0) {
+        rankBadge.textContent = 'RANK C';
+        rankBadge.className = 'px-2.5 py-0.5 rounded-md text-xs font-mono font-extrabold bg-amber-500/20 text-amber-300 border border-amber-400/50';
+        statusDesc.textContent = '初期アイドリング稼働中';
+        statusDesc.className = 'text-xs font-bold text-amber-300';
+        perfectBanner.classList.add('hidden');
+      } else {
+        rankBadge.textContent = 'STANDBY';
+        rankBadge.className = 'px-2.5 py-0.5 rounded-md text-xs font-mono font-extrabold bg-slate-800 text-slate-400 border border-slate-700';
+        statusDesc.textContent = '大気圏モニタリング待機中';
+        statusDesc.className = 'text-xs font-bold text-slate-400';
+        perfectBanner.classList.add('hidden');
+      }
+
+      const record = db[selectedDateStr] || {};
+      const container = document.getElementById('cities-container');
+      container.innerHTML = '';
+
+      CITY_CATEGORIES.forEach(city => {
+        const doneCount = city.items.filter(i => !!record[i.id]).length;
+        const isComplete = doneCount === city.items.length;
+
+        const card = document.createElement('div');
+        card.className = `rounded-2xl border transition-all duration-300 p-3.5 sm:p-4 ${
+          isComplete
+            ? 'bg-emerald-950/20 border-emerald-500/40 shadow-[0_0_20px_rgba(16,185,129,0.08)]'
+            : 'bg-space-850/65 border-slate-800/90'
+        }`;
+
+        const itemsHtml = city.items.map(item => {
+          const isChecked = !!record[item.id];
+          return `
+            <div
+              role="checkbox"
+              aria-checked="${isChecked}"
+              tabindex="0"
+              onclick="toggleItem('${item.id}')"
+              onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleItem('${item.id}');}"
+              class="group flex items-start gap-3 p-3 rounded-xl border transition-all duration-200 cursor-pointer select-none active:scale-[0.99] ${
+                isChecked
+                  ? 'bg-teal-950/35 border-teal-500/35'
+                  : 'bg-space-900/85 border-slate-800/90 hover:bg-space-800/75 hover:border-cyan-500/35'
+              }"
+            >
+              <div class="mt-0.5 flex-shrink-0 w-5 h-5 rounded-md border flex items-center justify-center transition-all duration-200 ${
+                isChecked
+                  ? 'bg-emerald-400 border-emerald-300 text-space-950 shadow-[0_0_10px_rgba(52,211,153,0.5)]'
+                  : 'bg-space-950 border-slate-600 group-hover:border-cyan-400'
+              }">
+                <svg class="w-3.5 h-3.5 transition-transform duration-200 ${isChecked ? 'scale-100' : 'scale-0'}" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                </svg>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-xs sm:text-sm font-medium leading-snug transition-colors ${
+                  isChecked ? 'text-emerald-200/80 line-through decoration-emerald-500/50' : 'text-slate-100'
+                }">
+                  ${item.title}
+                </p>
+                <p class="text-[11px] sm:text-xs mt-1 leading-relaxed transition-colors ${
+                  isChecked ? 'text-teal-400/60' : 'text-slate-400'
+                }">
+                  ${item.subtext}
+                </p>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        card.innerHTML = `
+          <div class="flex items-center justify-between gap-2 mb-2.5">
+            <h2 class="text-xs sm:text-sm font-bold text-slate-100 flex items-center gap-1.5">
+              <span>${city.icon}</span>
+              <span>${city.title}</span>
+            </h2>
+            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold border ${
+              isComplete
+                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/50'
+                : 'bg-slate-900/90 text-slate-400 border-slate-700/70'
+            }">
+              ${isComplete ? '✓ 冷却完了' : `${doneCount}/${city.items.length}`}
+            </span>
+          </div>
+          <div class="space-y-2">${itemsHtml}</div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    // =========================================================================
+    // 6. TAB 2: ANALYTICS (CHART.JS BAR & RADAR)
+    // =========================================================================
+    function renderAnalyticsView() {
+      const activeDates = Object.keys(db).filter(k => getDayStats(k).checked > 0).sort();
+      document.getElementById('analytics-days-badge').textContent = `記録: ${activeDates.length}日分`;
+
+      const monFirstLabels = ['月', '火', '水', '木', '金', '土', '日'];
+      const sumPercents = [0, 0, 0, 0, 0, 0, 0];
+      const dayCounts = [0, 0, 0, 0, 0, 0, 0];
+
+      activeDates.forEach(dateStr => {
+        const d = parseDateLocal(dateStr);
+        const monIdx = (d.getDay() + 6) % 7;
+        const { percent } = getDayStats(dateStr);
+        sumPercents[monIdx] += percent;
+        dayCounts[monIdx] += 1;
+      });
+
+      const weekdayAvgs = monFirstLabels.map((_, idx) =>
+        dayCounts[idx] > 0 ? Math.round(sumPercents[idx] / dayCounts[idx]) : 0
+      );
+
+      let best = null;
+      let worst = null;
+      monFirstLabels.forEach((label, idx) => {
+        if (dayCounts[idx] > 0) {
+          const val = weekdayAvgs[idx];
+          if (!best || val > best.val) best = { label, val };
+          if (!worst || val < worst.val) worst = { label, val };
+        }
+      });
+
+      const noteEl = document.getElementById('weekday-summary-note');
+      if (activeDates.length === 0) {
+        noteEl.innerHTML = '記録データがまだありません。「今日の保全」でチェックを入れるか、右上の <strong class="text-cyan-300">SYSTEM</strong> からデモデータを投入してください。';
+      } else if (best && worst && best.label !== worst.label) {
+        noteEl.innerHTML = `✨ 最も安定しているのは <strong class="text-emerald-300">${best.label}曜日（平均 ${best.val}%）</strong> です。<br/>⚠️ 一方、<strong class="text-amber-300">${worst.label}曜日（平均 ${worst.val}%）</strong> はオーバーヒートしやすい傾向があるため、意識的なシフトダウンを推奨します。`;
+      } else if (best) {
+        noteEl.innerHTML = `✨ 現在の観測では <strong class="text-emerald-300">${best.label}曜日（平均 ${best.val}%）</strong> の保全データが集計されています。`;
+      }
+
+      const barCtx = document.getElementById('weekdayBarChart').getContext('2d');
+      if (weekdayChartObj) weekdayChartObj.destroy();
+      weekdayChartObj = new Chart(barCtx, {
+        type: 'bar',
+        data: {
+          labels: monFirstLabels,
+          datasets: [{
+            label: '平均エコ安定度 (%)',
+            data: weekdayAvgs,
+            backgroundColor: weekdayAvgs.map(v =>
+              v >= 80 ? 'rgba(52, 211, 153, 0.85)' :
+              v >= 50 ? 'rgba(45, 212, 191, 0.8)' :
+              'rgba(251, 191, 36, 0.8)'
+            ),
+            borderRadius: 6,
+            borderSkipped: false
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              grid: { color: 'rgba(148, 163, 184, 0.12)' },
+              ticks: { color: '#94a3b8', font: { family: 'JetBrains Mono', size: 10 } }
+            },
+            x: {
+              grid: { display: false },
+              ticks: { color: '#cbd5e1', font: { weight: 'bold', size: 11 } }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: ctx => ` 平均安定度: ${ctx.parsed.y}%`
+              }
+            }
+          }
+        }
+      });
+
+      const cityLabels = CITY_CATEGORIES.map(c => c.shortLabel);
+      const cityRates = CITY_CATEGORIES.map(city => {
+        if (activeDates.length === 0) return 0;
+        let doneTotal = 0;
+        let possibleTotal = activeDates.length * city.items.length;
+        activeDates.forEach(dateStr => {
+          const rec = db[dateStr] || {};
+          city.items.forEach(item => {
+            if (rec[item.id]) doneTotal++;
+          });
+        });
+        return Math.round((doneTotal / possibleTotal) * 100);
+      });
+
+      const radarCtx = document.getElementById('cityRadarChart').getContext('2d');
+      if (cityRadarChartObj) cityRadarChartObj.destroy();
+      cityRadarChartObj = new Chart(radarCtx, {
+        type: 'radar',
+        data: {
+          labels: cityLabels,
+          datasets: [{
+            label: '都市別保全レート (%)',
+            data: cityRates,
+            backgroundColor: 'rgba(16, 185, 129, 0.22)',
+            borderColor: '#34d399',
+            borderWidth: 2,
+            pointBackgroundColor: '#34d399',
+            pointBorderColor: '#040914',
+            pointRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            r: {
+              beginAtZero: true,
+              max: 100,
+              ticks: {
+                stepSize: 25,
+                display: false
+              },
+              grid: { color: 'rgba(148, 163, 184, 0.18)' },
+              angleLines: { color: 'rgba(148, 163, 184, 0.18)' },
+              pointLabels: {
+                color: '#e2e8f0',
+                font: { size: 11, weight: 'bold', family: 'Noto Sans JP' }
+              }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: ctx => ` 保全達成率: ${ctx.parsed.r}%`
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // =========================================================================
+    // 7. TAB 3: MONTHLY HEATMAP & SUMMARY
+    // =========================================================================
+    function shiftViewingMonth(delta) {
+      viewingMonth += delta;
+      if (viewingMonth < 0) {
+        viewingMonth = 11;
+        viewingYear -= 1;
+      } else if (viewingMonth > 11) {
+        viewingMonth = 0;
+        viewingYear += 1;
+      }
+      renderMonthlyView();
+    }
+
+    function jumpToDateFromHeatmap(dateStr) {
+      selectedDateStr = dateStr;
+      switchTab('daily');
+    }
+
+    function renderMonthlyView() {
+      const mStr = String(viewingMonth + 1).padStart(2, '0');
+      document.getElementById('monthly-header-title').textContent = `${viewingYear}年 ${viewingMonth + 1}月`;
+
+      const grid = document.getElementById('monthly-heatmap-grid');
+      grid.innerHTML = '';
+
+      const firstDow = new Date(viewingYear, viewingMonth, 1).getDay();
+      const daysInMonth = new Date(viewingYear, viewingMonth + 1, 0).getDate();
+      const startOffset = (firstDow + 6) % 7;
+
+      for (let i = 0; i < startOffset; i++) {
+        const blank = document.createElement('div');
+        blank.className = 'aspect-square rounded-xl bg-space-950/30';
+        grid.appendChild(blank);
+      }
+
+      const todayStr = getTodayStr();
+      let recordedDays = 0;
+      let perfectDays = 0;
+      let percentSum = 0;
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dStr = String(d).padStart(2, '0');
+        const dateKey = `${viewingYear}-${mStr}-${dStr}`;
+        const { checked, percent } = getDayStats(dateKey);
+
+        if (checked > 0) {
+          recordedDays++;
+          percentSum += percent;
+          if (percent === 100) perfectDays++;
+        }
+
+        let cellStyle = 'bg-space-950/90 border-slate-800/80 text-slate-500 hover:border-slate-600';
+        if (percent === 100) {
+          cellStyle = 'bg-emerald-400 border-emerald-200 text-space-950 font-extrabold shadow-[0_0_12px_rgba(52,211,153,0.45)]';
+        } else if (percent >= 70) {
+          cellStyle = 'bg-emerald-600/85 border-emerald-400/70 text-white font-bold';
+        } else if (percent >= 40) {
+          cellStyle = 'bg-teal-800/85 border-teal-500/60 text-teal-100 font-bold';
+        } else if (percent > 0) {
+          cellStyle = 'bg-cyan-950/90 border-cyan-700/60 text-cyan-300 font-medium';
+        }
+
+        const todayRing = dateKey === todayStr ? 'ring-2 ring-amber-400 ring-offset-1 ring-offset-space-900' : '';
+
+        const cell = document.createElement('button');
+        cell.type = 'button';
+        cell.onclick = () => jumpToDateFromHeatmap(dateKey);
+        cell.className = `aspect-square rounded-xl border flex flex-col items-center justify-center transition-all active:scale-90 cursor-pointer ${cellStyle} ${todayRing}`;
+        cell.innerHTML = `
+          <span class="text-xs sm:text-sm font-mono leading-none">${d}</span>
+          <span class="text-[9px] font-mono mt-0.5 opacity-85">${checked > 0 ? `${percent}%` : ''}</span>
+        `;
+        grid.appendChild(cell);
+      }
+
+      const avgScore = recordedDays > 0 ? Math.round(percentSum / recordedDays) : 0;
+      document.getElementById('monthly-avg-score').textContent = `${avgScore}%`;
+      document.getElementById('monthly-perfect-days').textContent = `${perfectDays}日`;
+      document.getElementById('monthly-recorded-days').textContent = `${recordedDays}日`;
+
+      const rankPill = document.getElementById('monthly-rank-pill');
+      const vTitle = document.getElementById('monthly-verdict-title');
+      const vDesc = document.getElementById('monthly-verdict-desc');
+
+      if (recordedDays === 0) {
+        rankPill.textContent = '未観測';
+        rankPill.className = 'px-3 py-1 rounded-xl text-xs font-mono font-extrabold bg-slate-800 text-slate-400 border border-slate-700';
+        vTitle.textContent = '🌱 観測データ待機中';
+        vDesc.textContent = 'この月の保全記録はまだありません。日付マスをタップすると、その日のチェック画面へ直接移動して入力できます。';
+      } else if (avgScore >= 85 && recordedDays >= 10) {
+        rankPill.textContent = 'RANK S';
+        rankPill.className = 'px-3 py-1 rounded-xl text-xs font-mono font-extrabold bg-emerald-500/25 text-emerald-300 border border-emerald-400/60 shadow-[0_0_12px_rgba(16,185,129,0.3)]';
+        vTitle.textContent = '🌟 Sランク：黄金のエコシステム';
+        vDesc.textContent = '完璧なローリング休息の運用です！新皮質のハイパフォーマンスと古い脳の森林保全が高次元で両立しています。';
+      } else if (avgScore >= 65) {
+        rankPill.textContent = 'RANK A';
+        rankPill.className = 'px-3 py-1 rounded-xl text-xs font-mono font-extrabold bg-teal-500/25 text-teal-300 border border-teal-400/60';
+        vTitle.textContent = '🌿 Aランク：持続可能な緑の惑星';
+        vDesc.textContent = 'バーンアウト（文明の氷河期）を見事に防ぎ、安定した惑星気候を維持できています。';
+      } else if (avgScore >= 40) {
+        rankPill.textContent = 'RANK B';
+        rankPill.className = 'px-3 py-1 rounded-xl text-xs font-mono font-extrabold bg-cyan-500/25 text-cyan-300 border border-cyan-400/60';
+        vTitle.textContent = '💧 Bランク：冷却軌道に乗っています';
+        vDesc.textContent = '着実に冷却アクションを積み重ねています。第4都市（睡眠・栄養）の基盤項目を優先するとさらに安定します。';
+      } else {
+        rankPill.textContent = 'RANK C';
+        rankPill.className = 'px-3 py-1 rounded-xl text-xs font-mono font-extrabold bg-amber-500/25 text-amber-300 border border-amber-400/60';
+        vTitle.textContent = '🔥 Cランク：大気圏オーバーヒート注意';
+        vDesc.textContent = '未来都市群がフル稼働気味のようです。まずは1日1〜2項目のシフトダウンから始めてみましょう。';
+      }
+    }
+
+    // =========================================================================
+    // 8. DEMO DATA & JSON BACKUP EXPORT / IMPORT
+    // =========================================================================
+    async function seedDemoData() {
+      const today = new Date();
+      for (let offset = 20; offset >= 0; offset--) {
+        const d = new Date(today);
+        d.setDate(today.getDate() - offset);
+        const key = formatDateLocal(d);
+        const dow = d.getDay();
+        const isMidweekBusy = (dow === 3 || dow === 4);
+        const baseProb = isMidweekBusy ? 0.55 : 0.82;
+
+        const dayObj = {};
+        ALL_ITEM_IDS.forEach((id, idx) => {
+          const threshold = Math.min(0.95, baseProb - idx * 0.02);
+          if (Math.random() < threshold) {
+            dayObj[id] = true;
+          }
+        });
+
+        if (Object.keys(dayObj).length > 0) {
+          db[key] = dayObj;
+        }
+      }
+
+      renderActiveView();
+      await saveDatabaseToFirestore();
+      showToast('✨ 過去3週間分のサンプルデータを投入し、クラウドに保存しました！');
+    }
+
+    function handleWipeClick() {
+      document.getElementById('wipe-btn').classList.add('hidden');
+      document.getElementById('wipe-confirm-btn').classList.remove('hidden');
+      clearTimeout(wipeTimer);
+      wipeTimer = setTimeout(() => {
+        document.getElementById('wipe-confirm-btn').classList.add('hidden');
+        document.getElementById('wipe-btn').classList.remove('hidden');
+      }, 3500);
+    }
+
+    async function executeWipeAll() {
+      clearTimeout(wipeTimer);
+      db = {};
+      document.getElementById('wipe-confirm-btn').classList.add('hidden');
+      document.getElementById('wipe-btn').classList.remove('hidden');
+      renderActiveView();
+      await saveDatabaseToFirestore();
+      showToast('🗑️ すべてのクラウド記録データをリセットしました。');
+    }
+
+    function exportJsonBackup() {
+      const jsonStr = JSON.stringify(db, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `planet_brain_backup_${getTodayStr()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showToast('💾 バックアップJSONファイルをダウンロードしました！');
+    }
+
+    function toggleImportModal() {
+      document.getElementById('import-box').classList.toggle('hidden');
+    }
+
+    function handleJsonFileUpload(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        document.getElementById('json-paste-area').value = e.target.result;
+      };
+      reader.readAsText(file);
+    }
+
+    async function applyPastedJson() {
+      const raw = document.getElementById('json-paste-area').value.trim();
+      if (!raw) {
+        showToast('⚠️ 復元するJSONデータを選択または貼り付けてください。');
+        return;
+      }
+      try {
+        const parsed = JSON.parse(raw);
+        if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+          throw new Error('Invalid format');
+        }
+        db = parsed;
+        document.getElementById('import-box').classList.add('hidden');
+        document.getElementById('json-paste-area').value = '';
+        renderActiveView();
+        await saveDatabaseToFirestore();
+        showToast('✅ バックアップデータを復元し、クラウドに保存しました！');
+      } catch (err) {
+        showToast('⚠️ JSONデータの形式が正しくありません。内容をご確認ください。');
+      }
+    }
+
+    // Expose functions to global window for HTML inline event attributes
+    window.toggleSystemDrawer = toggleSystemDrawer;
+    window.copyUserId = copyUserId;
+    window.seedDemoData = seedDemoData;
+    window.handleWipeClick = handleWipeClick;
+    window.executeWipeAll = executeWipeAll;
+    window.hideToast = hideToast;
+    window.switchTab = switchTab;
+    window.shiftSelectedDate = shiftSelectedDate;
+    window.onDateInputChange = onDateInputChange;
+    window.jumpToToday = jumpToToday;
+    window.toggleItem = toggleItem;
+    window.clearCurrentDay = clearCurrentDay;
+    window.exportJsonBackup = exportJsonBackup;
+    window.toggleImportModal = toggleImportModal;
+    window.handleJsonFileUpload = handleJsonFileUpload;
+    window.applyPastedJson = applyPastedJson;
+    window.shiftViewingMonth = shiftViewingMonth;
+    window.jumpToDateFromHeatmap = jumpToDateFromHeatmap;
+
+    // =========================================================================
+    // 9. BOOTSTRAP
+    // =========================================================================
+    window.addEventListener('DOMContentLoaded', () => {
+      const now = new Date();
+      selectedDateStr = formatDateLocal(now);
+      viewingYear = now.getFullYear();
+      viewingMonth = now.getMonth();
+      switchTab('daily');
+      initCloudConnection();
+    });
+  </script>
+</body>
+</html>
